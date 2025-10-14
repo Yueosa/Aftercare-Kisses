@@ -1,0 +1,183 @@
+from typing import Literal, Dict
+import sqlite3
+
+
+class Friend():
+    def __init__ (self, friend_id, name , qq , gender , suki ) -> None:
+        '''
+        初始化Friend
+        '''
+        self.friend_id = friend_id
+        self.name = name
+        self.qq = qq
+        self.gender = gender 
+        self.suki = suki #喜欢的东西
+
+        
+
+    def __str__(self):
+        """
+        返回朋友对象的字符串表示形式，包括id、名字、qq、性别和喜欢的东西。
+        """
+        return f"{self.friend_id}, {self.name}, {self.qq}, {self.gender}, {self.suki}"
+    
+
+class System():
+
+    def __init__(self):
+        self.cp: Printer = Printer() #偷用的彩色打印）
+        self.friend = []
+        self.init_database()
+
+    def init_database(self):
+        try:
+            with sqlite3.connect('friend.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS friend (
+                        friend_id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        qq TEXT,
+                        gender TEXT,
+                        suki TEXT
+                    )
+                ''')
+                conn.commit()
+
+        except Exception as e:
+            self.cp.cprint("red","数据库初始化失败了")
+
+
+    def add_friend(self):
+
+        
+        self.cp.cprint("green","请填写朋友的信息")
+
+        friend_id = input("好朋友的id是: ")
+        name = input("好朋友的名字是: ")
+        qq = input("好朋友的qq是: ")
+        gender = input("好朋友的性别是: ")
+        suki = input("好朋友喜欢的东西是什么呢: ")
+
+        friend = Friend(friend_id , name , qq , gender , suki )
+        self.friend.append(friend)
+        
+        try:
+            with sqlite3.connect('friend.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                INSERT INTO friend(friend_id, name, qq, gender, suki)
+                VALUES (?, ?, ?, ?, ?)
+    ''',(friend_id, name, qq, gender, suki))
+                self.cp.cprint("green","添加了新朋友！")
+        except sqlite3.IntegrityError:
+            self.cp.cprint("red","已经有了这个id,尝试换一个")
+            
+
+
+
+    def delete_friend(self):
+        self.cp.cprint("blue","请输入将要被删除朋友的id: ")
+        friend_id = input("id: ")
+        
+
+        with sqlite3.connect('friend.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT friend_id FROM friend WHERE friend_id = ?',(friend_id,))
+                if cursor.fetchone():
+                    cursor.execute('DELETE FROM friend WHERE friend_id = ?',(friend_id,))
+                    self.cp.cprint("red","祝你幸福...")
+                else :
+                    self.cp.cprint("yellow","没有找到相同的id,这个人不是朋友...")
+        
+    def find_friend(self):
+        self.cp.cprint("blue","请输入要查询的id: ")
+        friend_id = input("id: ")
+
+        with sqlite3.connect('friend.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM friend WHERE friend_id= ?',(friend_id,))
+            friend = cursor.fetchone()
+            
+        if friend:
+            self.cp.cprint("green","找到朋友了！")
+            print(f"ID: {friend[0]}, 姓名: {friend[1]}, QQ: {friend[2]}, 性别: {friend[3]}, 喜欢: {friend[4]}")
+            return friend
+        else: 
+            self.cp.cprint("red","没有找到朋友,")
+            return None
+
+
+    def list_friend(self):
+
+        with sqlite3.connect('friend.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM friend')
+            friends = cursor.fetchall()
+            if friends:    
+                for friend in friends:
+                    print(f"ID: {friend[0]}, 姓名: {friend[1]}, QQ: {friend[2]}, 性别: {friend[3]}, 喜欢: {friend[4]}")    
+            else:
+                self.cp.cprint("blue","没有找到有趣的女人...")
+
+    
+        
+    def menu(self)-> None:
+        self.cp.cprint("yellow","============================================")
+        self.cp.cprint("cyan"," 朋友管理系统(≖ᴗ≖๑)")
+        self.cp.cprint("yellow","============================================")
+        print("1. 添加一位小伙伴~(✪ω✪)~")
+        print("2. 删除朋友ㅍ_ㅍ")
+        print("3. 查找一位朋友(◕ܫ◕)")
+        print("4. 列出朋友们ξ( ✿＞◡❛)")
+        print("5. 退出系统")
+
+    
+    def main(self) -> None:
+        while True:    
+            self.menu()
+            choice = input("")
+            if choice == '1':
+                self.add_friend()
+            elif choice == '2':
+                self.delete_friend()
+            elif choice == '3':
+                self.find_friend()
+            elif choice == '4':
+                self.list_friend()
+            elif choice == '5':
+                break
+            else:
+                self.cp.cprint("red","[WARNING] 无效选择，请重新输入！")
+
+        
+class Printer:
+    """
+    Printer类的功能是实现一个cprint方法, 基于ASCII转义码实现彩色的输出效果
+    """
+    COLORS: Dict[str, str] = {
+        "red": "31",    # 红色
+        "blue": "34",   # 蓝色
+        "green": "32",  # 绿色
+        "yellow": "33", # 黄色
+        "cyan": "36",   # 青色
+        "magenta": "35" # 洋红
+    }
+
+    def cprint(
+        self,
+        color: Literal["red", "blue", "green", "yellow", "cyan", "magenta"],
+        message: str
+    ) -> None:
+        """彩色打印函数"""
+        color_code = self.COLORS.get(color, "0")
+        print(f"\033[{color_code}m{message}\033[0m")
+
+
+if __name__ == "__main__":
+    system = System()
+    system.main()
+
+
+
+
